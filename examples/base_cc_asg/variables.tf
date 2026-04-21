@@ -59,8 +59,8 @@ variable "subnet_bastion" {
 
 variable "subnet_workload" {
   type        = string
-  description = "A subnet IP CIDR for the greenfield/test workload in the Service VPC"
-  default     = "10.1.2.0/24"
+  description = "A subnet IP CIDR for the greenfield/test workload in the Service VPC. If empty, a random subnet from 10.1.15.0/24 to 10.1.95.0/24 is selected"
+  default     = ""
 }
 
 variable "subnet_cc_mgmt" {

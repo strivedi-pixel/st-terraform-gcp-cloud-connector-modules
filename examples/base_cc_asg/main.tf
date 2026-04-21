@@ -7,6 +7,19 @@ resource "random_string" "suffix" {
   special = false
 }
 
+################################################################################
+# Randomly select workload subnet third octet between 15 and 95 if not
+# explicitly provided via var.subnet_workload
+################################################################################
+resource "random_integer" "workload_subnet_octet" {
+  min = 15
+  max = 95
+}
+
+locals {
+  workload_subnet_cidr = var.subnet_workload != "" ? var.subnet_workload : "10.1.${random_integer.workload_subnet_octet.result}.0/24"
+}
+
 
 ################################################################################
 # The following lines generates a new SSH key pair and stores the PEM file
@@ -44,7 +57,7 @@ module "network" {
   hcp_vault_ips     = var.hcp_vault_ips
   hcp_vault_port    = var.hcp_vault_port
 
-  subnet_workload   = var.subnet_workload
+  subnet_workload   = local.workload_subnet_cidr
   subnet_bastion    = var.subnet_bastion
   subnet_cc_mgmt    = var.subnet_cc_mgmt
   subnet_cc_service = var.subnet_cc_service
