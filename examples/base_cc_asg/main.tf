@@ -7,6 +7,19 @@ resource "random_string" "suffix" {
   special = false
 }
 
+################################################################################
+# Randomly select workload subnet third octet between 15 and 95 if not
+# explicitly provided via var.subnet_workload
+################################################################################
+resource "random_integer" "workload_subnet_octet" {
+  min = 15
+  max = 95
+}
+
+locals {
+  workload_subnet_cidr = var.subnet_workload != "" ? var.subnet_workload : "10.1.${random_integer.workload_subnet_octet.result}.0/24"
+}
+
 
 ################################################################################
 # The following lines generates a new SSH key pair and stores the PEM file
@@ -44,7 +57,7 @@ module "network" {
   hcp_vault_ips     = var.hcp_vault_ips
   hcp_vault_port    = var.hcp_vault_port
 
-  subnet_workload   = var.subnet_workload
+  subnet_workload   = local.workload_subnet_cidr
   subnet_bastion    = var.subnet_bastion
   subnet_cc_mgmt    = var.subnet_cc_mgmt
   subnet_cc_service = var.subnet_cc_service
@@ -99,6 +112,94 @@ resource "google_compute_route" "route_to_cc_vm" {
   network      = module.network.service_vpc_network
   tags         = module.workload.workload_network_tag
   next_hop_ilb = module.ilb.next_hop_ilb_ip_address
+}
+
+
+################################################################################
+# 3b. Create dedicated VPC, subnet, and iperf server with public IP
+################################################################################
+resource "google_compute_network" "iperf_vpc" {
+  name                    = "${var.name_prefix}-iperf-vpc-${random_string.suffix.result}"
+  auto_create_subnetworks = false
+  project                 = coalesce(var.project_host, var.project)
+}
+
+resource "google_compute_subnetwork" "iperf_subnet" {
+  name          = "${var.name_prefix}-iperf-subnet-${random_string.suffix.result}"
+  ip_cidr_range = "10.1.225.0/24"
+  network       = google_compute_network.iperf_vpc.self_link
+  region        = var.region
+}
+
+resource "google_compute_router" "iperf_router" {
+  name    = "${var.name_prefix}-iperf-router-${random_string.suffix.result}"
+  network = google_compute_network.iperf_vpc.self_link
+}
+
+resource "google_compute_router_nat" "iperf_nat" {
+  name                               = "${var.name_prefix}-iperf-nat-${random_string.suffix.result}"
+  router                             = google_compute_router.iperf_router.name
+  region                             = google_compute_router.iperf_router.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
+resource "google_service_account" "iperf_service_account" {
+  account_id   = "${var.name_prefix}-iperf-sa-${random_string.suffix.result}"
+  display_name = "${var.name_prefix}-iperf-sa-${random_string.suffix.result}"
+}
+
+resource "google_compute_instance" "iperf_server" {
+  name         = "${var.name_prefix}-iperf-server-${random_string.suffix.result}"
+  machine_type = "e2-medium"
+  zone         = length(var.zones) == 0 ? data.google_compute_zones.available.names[0] : var.zones[0]
+  tags         = ["zscc-iperf"]
+  network_interface {
+    subnetwork = google_compute_subnetwork.iperf_subnet.self_link
+    access_config {
+      # Ephemeral public IP
+    }
+  }
+  metadata = {
+    ssh-keys = "ubuntu:${tls_private_key.key.public_key_openssh}"
+  }
+  metadata_startup_script = <<-EOT
+    #!/bin/bash
+    apt-get update
+    apt-get install -y iperf3 net-tools
+    systemctl enable --now iperf3 || iperf3 -s -D
+  EOT
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      type  = "pd-ssd"
+      size  = "10"
+    }
+  }
+  service_account {
+    email  = google_service_account.iperf_service_account.email
+    scopes = ["cloud-platform"]
+  }
+}
+
+resource "google_compute_firewall" "iperf_ingress" {
+  name        = "${var.name_prefix}-fw-iperf-ingress-${random_string.suffix.result}"
+  description = "Permit iperf3 (TCP/UDP 5201) and SSH to iperf server"
+  network     = google_compute_network.iperf_vpc.self_link
+  direction   = "INGRESS"
+  allow {
+    protocol = "tcp"
+    ports    = ["5201", "22"]
+  }
+  allow {
+    protocol = "udp"
+    ports    = ["5201"]
+  }
+  allow {
+    protocol = "icmp"
+  }
+  source_ranges           = ["0.0.0.0/0"]
+  target_service_accounts = [google_service_account.iperf_service_account.email]
 }
 
 

@@ -885,6 +885,25 @@ Else, you will need to add this new service account to your HCP Vault before Clo
         * ) echo "${RED}invalid response. Please enter yes or no${RESET}";;
         esac
     done
+
+    if [[ "$dtype" == "base_cc_asg" ]]; then
+        while true; do
+            read -r -p "${CYAN}Install iperf on workload instances for connectivity testing? (yes/no): ${RESET}" iperf_response
+            case $iperf_response in 
+            yes|y ) 
+                echo "${GREEN}iperf installation will be enabled${RESET}"
+                echo "export TF_VAR_install_iperf=true" >> .zsecrc
+            break
+            ;;
+            no|n )
+                echo "${YELLOW}iperf will not be installed${RESET}"
+                echo "export TF_VAR_install_iperf=false" >> .zsecrc
+            break
+            ;;
+            * ) echo "${RED}Invalid response. Please enter yes or no${RESET}";;
+            esac
+        done 
+    fi
 fi
 
 

@@ -75,6 +75,12 @@ variable "subnet_cc_service" {
   default     = "10.1.1.0/24"
 }
 
+variable "subnet_iperf" {
+  type        = string
+  description = "A subnet IP CIDR for the iperf workload in the iperf VPC"
+  default     = "10.2.1.0/24"
+}
+
 variable "ccvm_instance_type" {
   type        = string
   description = "Cloud Connector Instance Type"

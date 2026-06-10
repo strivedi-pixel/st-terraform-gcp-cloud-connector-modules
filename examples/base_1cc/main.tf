@@ -48,9 +48,11 @@ module "network" {
   subnet_bastion    = var.subnet_bastion
   subnet_cc_mgmt    = var.subnet_cc_mgmt
   subnet_cc_service = var.subnet_cc_service
+  subnet_iperf      = var.subnet_iperf
 
   workloads_enabled      = true
   bastion_enabled        = true
+  iperf_enabled          = true
   support_access_enabled = var.support_access_enabled
 
   ## Optional: Custom Firewall Rule Names. If not specified and conditions are met for rule
@@ -91,6 +93,24 @@ module "workload" {
   vpc_network                    = module.network.service_vpc_network
   allowed_ssh_from_internal_cidr = [var.subnet_cc_mgmt, var.subnet_bastion]
 }
+
+
+################################################################################
+# 3.5 Create iperf Workload in iperf VPC
+################################################################################
+module "iperf" {
+  source                         = "../../modules/terraform-zscc-workload-gcp"
+  workload_count                 = 1
+  name_prefix                    = "${var.name_prefix}-iperf"
+  resource_tag                   = random_string.suffix.result
+  subnet                         = module.network.iperf_subnet
+  zones                          = local.zones_list
+  ssh_key                        = tls_private_key.key.public_key_openssh
+  vpc_network                    = module.network.iperf_vpc_network
+  allowed_ssh_from_internal_cidr = [var.subnet_cc_mgmt, var.subnet_bastion]
+  install_iperf                  = true
+}
+
 
 resource "google_compute_route" "route_to_cc_vm" {
   name              = "${var.name_prefix}-route-to-cc-vm-${random_string.suffix.result}"

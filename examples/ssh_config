@@ -1,0 +1,20 @@
+    Host bastion
+      HostName 34.80.251.31
+      User ubuntu
+      IdentityFile zscc-key-8mt8i0v1.pem
+
+    Host workload-0
+      HostName 10.1.2.3
+      User ubuntu
+      IdentityFile zscc-key-8mt8i0v1.pem
+      StrictHostKeyChecking no
+      ProxyJump bastion
+      ProxyCommand ssh bastion -W %h:%p
+    Host workload-1
+      HostName 10.1.2.2
+      User ubuntu
+      IdentityFile zscc-key-8mt8i0v1.pem
+      StrictHostKeyChecking no
+      ProxyJump bastion
+      ProxyCommand ssh bastion -W %h:%p
+    

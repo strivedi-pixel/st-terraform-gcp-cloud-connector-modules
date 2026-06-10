@@ -35,9 +35,19 @@ SSH to WORKLOAD
 ssh -F ssh_config workload-${k}
 %{endfor~}  
 
+SSH to IPERF
+%{for k, v in local.iperf_map~}
+ssh -F ssh_config iperf-${k}
+%{endfor~}  
+
 WORKLOAD IPs:
 %{for k, v in local.workload_map~}
 workload-${k} = ${v}
+%{endfor~}  
+
+IPERF IPs:
+%{for k, v in local.iperf_map~}
+iperf-${k} = ${v}
 %{endfor~}  
 
 
@@ -82,6 +92,10 @@ locals {
     for index, ip in module.workload.private_ip :
     index => ip
   }
+  iperf_map = {
+    for index, ip in module.iperf.private_ip :
+    index => ip
+  }
   cc_map = {
     for index, ip in module.cc_vm.cc_management_ip :
     index => ip
@@ -94,6 +108,16 @@ locals {
 
     %{for k, v in local.workload_map~}
 Host workload-${k}
+      HostName ${v}
+      User ubuntu
+      IdentityFile ${var.name_prefix}-key-${random_string.suffix.result}.pem
+      StrictHostKeyChecking no
+      ProxyJump bastion
+      ProxyCommand ssh bastion -W %h:%p
+    %{endfor~}    
+
+    %{for k, v in local.iperf_map~}
+Host iperf-${k}
       HostName ${v}
       User ubuntu
       IdentityFile ${var.name_prefix}-key-${random_string.suffix.result}.pem

@@ -31,9 +31,9 @@ terraform {
 
 # Configure the Google Provider
 provider "google" {
-  credentials = var.credentials
-  project     = coalesce(var.project_host, var.project)
-  region      = var.region
+  credentials = var.credentials == "null" || var.credentials == "" ? null : var.credentials
+  project      = coalesce(var.project_host, var.project)
+  region       = var.region
 }
 
 provider "http" {}
