@@ -90,13 +90,13 @@ ${module.cc_cloud_function.service_account}
 IPERF Server Details:
 Public IP:  ${google_compute_instance.iperf_server.network_interface[0].access_config[0].nat_ip}
 Private IP: ${google_compute_instance.iperf_server.network_interface[0].network_ip}
-VPC:        ${google_compute_network.iperf_vpc.name}
+VPC:        ${module.network.iperf_vpc_network}
 
 SSH to IPERF Server:
 ssh -F ssh_config iperf-server
 
 Run iperf3 test from workload:
-iperf3 -c ${google_compute_instance.iperf_server.network_interface[0].access_config[0].nat_ip}
+iperf3 -c ${google_compute_instance.iperf_server.network_interface[0].network_ip}
 
 TB
 }

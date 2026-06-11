@@ -67,6 +67,18 @@ variable "workloads_enabled" {
   description = "Configure Workload subnet in Service VPC with accompanying bastion host for SSH access to test client workloads if set to true"
 }
 
+variable "iperf_enabled" {
+  type        = bool
+  default     = false
+  description = "Configure iperf VPC and subnet in a separate VPC with accompanying peering to Service VPC if set to true"
+}
+
+variable "subnet_iperf" {
+  type        = string
+  description = "A subnet IP CIDR for the iperf workload in the iperf VPC. This value will be ignored if iperf_enabled variable is set to false"
+  default     = "10.2.1.0/24"
+}
+
 variable "bastion_enabled" {
   type        = bool
   default     = false

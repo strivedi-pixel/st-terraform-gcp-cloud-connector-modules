@@ -258,3 +258,80 @@ resource "google_compute_firewall" "default_service" {
   }
   source_ranges = var.default_nsg
 }
+
+
+################################################################################
+# Create VPC Network, Subnet, Router, and NAT Gateway for iperf
+################################################################################
+resource "google_compute_network" "iperf_vpc_network" {
+  count                   = var.iperf_enabled ? 1 : 0
+  name                    = "${var.name_prefix}-iperf-vpc-${var.resource_tag}"
+  auto_create_subnetworks = false
+  routing_mode            = var.routing_mode
+}
+
+resource "google_compute_subnetwork" "iperf_subnet" {
+  count         = var.iperf_enabled ? 1 : 0
+  name          = "${var.name_prefix}-iperf-subnet-${var.resource_tag}"
+  ip_cidr_range = var.subnet_iperf
+  network       = google_compute_network.iperf_vpc_network[0].self_link
+  region        = var.region
+}
+
+resource "google_compute_router" "iperf_vpc_router" {
+  count   = var.iperf_enabled ? 1 : 0
+  name    = "${var.name_prefix}-iperf-vpc-router-${var.resource_tag}"
+  network = google_compute_network.iperf_vpc_network[0].self_link
+}
+
+resource "google_compute_router_nat" "iperf_vpc_nat_gateway" {
+  count                              = var.iperf_enabled ? 1 : 0
+  name                               = "${var.name_prefix}-iperf-vpc-nat-gw-${var.resource_tag}"
+  router                             = google_compute_router.iperf_vpc_router[0].name
+  region                             = google_compute_router.iperf_vpc_router[0].region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}
+
+################################################################################
+# Create vpc peering between Service and iperf VPC
+################################################################################
+resource "google_compute_network_peering" "service_to_iperf" {
+  count        = var.iperf_enabled ? 1 : 0
+  name         = "${var.name_prefix}-vpc-peer-service-to-iperf-${var.resource_tag}"
+  network      = try(google_compute_network.service_vpc_network[0].self_link, data.google_compute_network.service_vpc_network_selected[0].self_link)
+  peer_network = google_compute_network.iperf_vpc_network[0].self_link
+
+  import_custom_routes = true
+  export_custom_routes = true
+}
+
+resource "google_compute_network_peering" "iperf_to_service" {
+  count        = var.iperf_enabled ? 1 : 0
+  name         = "${var.name_prefix}-vpc-peer-iperf-to-service-${var.resource_tag}"
+  network      = google_compute_network.iperf_vpc_network[0].self_link
+  peer_network = try(google_compute_network.service_vpc_network[0].self_link, data.google_compute_network.service_vpc_network_selected[0].self_link)
+
+  import_custom_routes = true
+  export_custom_routes = true
+}
+
+resource "google_compute_firewall" "iperf_ingress" {
+  count   = var.iperf_enabled ? 1 : 0
+  name    = "${var.name_prefix}-fw-iperf-ingress-${var.resource_tag}"
+  network = google_compute_network.iperf_vpc_network[0].self_link
+  allow {
+    protocol = "tcp"
+    ports    = ["22", "5001", "5201"]
+  }
+  allow {
+    protocol = "udp"
+    ports    = ["5001", "5201"]
+  }
+  source_ranges = ["0.0.0.0/0"]
+}

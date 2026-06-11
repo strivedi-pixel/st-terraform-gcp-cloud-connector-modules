@@ -42,6 +42,12 @@ variable "workload_image_name" {
   default     = "ubuntu-os-cloud/ubuntu-2204-lts"
 }
 
+variable "install_iperf" {
+  type        = bool
+  description = "Install iperf on the workload instance"
+  default     = false
+}
+
 variable "vpc_network" {
   type        = string
   description = "Workload VPC network"

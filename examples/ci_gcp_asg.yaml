@@ -1,0 +1,52 @@
+variables:
+  cloud:
+    description: "Select the cloud environment"
+    value: "zscalerbeta.net"
+    options:
+      - "zscaler.net"
+      - "zscloud.net"
+      - "zscalertwo.net"
+      - "zscalerthree.net"
+      - "zscalerbeta.net"
+      - "zsqa.net"
+
+  image:
+    description: "Set to true to deploy with a specific GCP image. If false, uses the default."
+    value: "false"
+    options:
+      - "true"
+      - "false"
+
+  image_name:
+    description: "GCP image name to deploy (e.g. projects/my-project/global/images/my-cc-image). Only used when image=true."
+    value: ""
+
+stages:
+  - setup
+
+setup-repo:
+  stage: setup
+  tags:
+    - ztw_automation
+  timeout: 12h
+  script:
+    - mkdir -p "$CI_PROJECT_DIR/cloned_repo"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.corp.zscaler.com/zscaler/ztw/automation_stuff/automation_repo.git "$CI_PROJECT_DIR/cloned_repo"
+    - cd "$CI_PROJECT_DIR/cloned_repo"
+    - git checkout cc_jenkins_bash_script
+    - bash src/utils/jenkins_script/gitlab_gcp_asg_job.sh
+    - |
+      if [[ $? -ne 0 ]]; then
+        echo "GCP ASG script failed"
+        exit 1
+      fi
+  artifacts:
+    paths:
+      - "$CI_PROJECT_DIR/cloned_repo/report.html"
+      - "$CI_PROJECT_DIR/cloned_repo/test_summary_report.html"
+    expire_in: 1 week
+    when: always
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - when: always

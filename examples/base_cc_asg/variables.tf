@@ -59,8 +59,8 @@ variable "subnet_bastion" {
 
 variable "subnet_workload" {
   type        = string
-  description = "A subnet IP CIDR for the greenfield/test workload in the Service VPC. If empty, a random subnet from 10.1.15.0/24 to 10.1.95.0/24 is selected"
-  default     = ""
+  description = "A subnet IP CIDR for the greenfield/test workload in the Service VPC"
+  default     = "10.1.2.0/24"
 }
 
 variable "subnet_cc_mgmt" {
@@ -73,6 +73,12 @@ variable "subnet_cc_service" {
   type        = string
   description = "A subnet IP CIDR for the Cloud Connector/Load Balancer in the Service VPC"
   default     = "10.1.1.0/24"
+}
+
+variable "subnet_iperf" {
+  type        = string
+  description = "A subnet IP CIDR for the iperf workload in the iperf VPC"
+  default     = "10.2.1.0/24"
 }
 
 variable "ccvm_instance_type" {

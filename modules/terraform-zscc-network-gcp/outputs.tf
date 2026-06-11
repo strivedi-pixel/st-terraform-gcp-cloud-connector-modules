@@ -28,6 +28,16 @@ output "workload_subnet" {
   value       = google_compute_subnetwork.vpc_subnet_workload[*].self_link
 }
 
+output "iperf_vpc_network" {
+  description = "VPC ID for iperf"
+  value       = try(google_compute_network.iperf_vpc_network[0].self_link, null)
+}
+
+output "iperf_subnet" {
+  description = "Subnet for iperf host"
+  value       = try(google_compute_subnetwork.iperf_subnet[0].self_link, null)
+}
+
 output "mgmt_vpc_nat_gateway" {
   description = "ID of Management VPC NAT Gateway resource"
   value       = try(google_compute_router_nat.mgmt_vpc_nat_gateway[0].id, data.google_compute_router_nat.mgmt_vpc_nat_gateway_selected[0].id)

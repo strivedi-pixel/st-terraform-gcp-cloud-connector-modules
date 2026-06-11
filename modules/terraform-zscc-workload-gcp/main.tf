@@ -22,7 +22,7 @@ resource "google_compute_instance" "server_host" {
   metadata = {
     ssh-keys = "ubuntu:${var.ssh_key}"
   }
-  metadata_startup_script = "sudo apt install net-tools"
+  metadata_startup_script = var.install_iperf ? "sudo apt-get update && sudo apt-get install -y net-tools iperf iperf3" : "sudo apt-get update && sudo apt-get install -y net-tools"
   boot_disk {
     initialize_params {
       image = var.workload_image_name
